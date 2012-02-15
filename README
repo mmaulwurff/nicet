@@ -1,0 +1,5 @@
+nicet, nice tetris
+
+ncurses-based, so text graphics
+
+main idea (not implemented now) is to make a tetris game which predicts which block is more suitable for current situation.
