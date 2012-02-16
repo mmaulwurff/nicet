@@ -1,5 +1,24 @@
-nicet, nice tetris
+nicet, nice tetris with text graphics
 
-ncurses-based, so text graphics
+In normal mode (default) it works like usual tetris game with one additional feature: desired block. Summonnig it costs 20 points. It can help you in difficult situation.
+In lazy mode, nearly all blocks are desired. No next block preview is available in this mode.
 
-main idea (not implemented now) is to make a tetris game which predicts which block is more suitable for current situation.
+Command line options:
+
+[-s speed] - set game speed (from 1 to 10)
+[-l] - play lazy mode
+
+Game controls:
+
+Left and right arrows: move current falling block
+Down arrow: move block down
+Up arrow: rotate block clockwise
+Space: rotate block anticlockwise
+d: (in normal mode only) summon desired block
+p: pause and resume game
+Q: quit game
+
+Compile notes:
+gcc -lncurses -o nicet.bin
+
+Todo: highscores list
