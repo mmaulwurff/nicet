@@ -146,13 +146,17 @@ char map[24][16]={
 };
 
 WINDOW * window, * info;
-short x, y; //left upper corner of active block
-short active, next; //blocks
-short fallen_flag; //1 if have just fallen. needed to compensate falling sometimes
-short count=0; //for not to fall everytime player presses a key
-short score=0;
-short delay=10; //0.1 seconds, speed=11-delay
-char mode; //'l' for lazy mode, other for normal
+struct {
+	unsigned x : 4; //left upper corner of active block
+	unsigned y : 5;
+	unsigned active : 5;
+	unsigned next : 5; //blocks
+	unsigned fallen_flag : 1; //needed to compensate falling sometimes
+	unsigned count : 2; //for not to fall everytime player presses a key
+	unsigned score : 10;
+	unsigned delay : 4; //0.1 seconds, speed=11-delay
+	unsigned lazymode : 1;
+} game;
 
 int color(int in) { //colors of blocks. used in wattrset
 	if (in==0) return 1;
@@ -168,14 +172,15 @@ void upd_part() { //updates only current block position
 	short i, j;
 	//erase
 	wstandend(window);
-	for (i=x-1; i<=x+4; ++i)
-	for (j=y-1; j<=y+3; ++j)
+	for (i=game.x-1; i<=game.x+4; ++i)
+	for (j=game.y-1; j<=game.y+3; ++j)
 		if (map[j][i]==' ') mvwprintw(window, j, 2*(i-2)-1, "  ");
 	//print new
-	wattrset(window, COLOR_PAIR(color(active)));
+	wattrset(window, COLOR_PAIR(color(game.active)));
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (blocks[active][j][i]=='#') mvwprintw(window, y+j, 2*(x+i-2)-1, "##");
+		if (blocks[game.active][j][i]=='#')
+			mvwprintw(window, game.y+j, 2*(game.x+i-2)-1, "##");
 	wstandend(window);
 	box(window, 0, 0);
 	wrefresh(window);
@@ -185,14 +190,15 @@ void print_next() { //next block preview
 	wstandend(info);
 	werase(info);
 	box(info, 0, 0);
-	mvwprintw(info, 0, 0, "Score:%4d", score);
-	mvwprintw(info, 5, 1, "Speed:%2d", 11-delay);
-	if (mode!='l') {
-		wattrset(info, COLOR_PAIR(color(next)));
+	mvwprintw(info, 0, 0, "Score:%4d", game.score);
+	mvwprintw(info, 5, 1, "Speed:%2d", 11-game.delay);
+	if (!game.lazymode) {
+		wattrset(info, COLOR_PAIR(color(game.next)));
 		short i, j;
 		for (i=0; i<4; ++i)
 		for (j=0; j<4; ++j)
-			if (blocks[next][j][i]=='#') mvwprintw(info, j+1, 2*i+1, "##");
+			if (blocks[game.next][j][i]=='#')
+				mvwprintw(info, j+1, 2*i+1, "##");
 	} else {
 		mvwprintw(info, 2, 3, "Lazy");
 		mvwprintw(info, 3, 3, "Mode");
@@ -218,89 +224,91 @@ int check(int side, int bottom) { //check fitness of block position and a map
 	short i, j;
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (map[y+j+bottom][x+i+side]!=' ' && blocks[active][j][i]=='#') return 0;
+		if (map[game.y+j+bottom][game.x+i+side]!=' ' &&
+				blocks[game.active][j][i]=='#') return 0;
 	return 1;
 }
 
 int clockwise() { //turn
-	switch (active) {
-		case  1: active=2;  break;
-		case  2: active=1;  break;
+	switch (game.active) {
+		case  1: game.active=2;  break;
+		case  2: game.active=1;  break;
 
-		case  3: active=4;  break;
-		case  4: active=3;  break;
+		case  3: game.active=4;  break;
+		case  4: game.active=3;  break;
 
-		case  5: active=6;  break;
-		case  6: active=5;  break;
+		case  5: game.active=6;  break;
+		case  6: game.active=5;  break;
 
-		case  7: active=8;  break;
-		case  8: active=9;  break;
-		case  9: active=10; break;
-		case 10: active=7;  break;
+		case  7: game.active=8;  break;
+		case  8: game.active=9;  break;
+		case  9: game.active=10; break;
+		case 10: game.active=7;  break;
 
-		case 11: active=12; break;
-		case 12: active=13; break;
-		case 13: active=14; break;
-		case 14: active=11; break;
+		case 11: game.active=12; break;
+		case 12: game.active=13; break;
+		case 13: game.active=14; break;
+		case 14: game.active=11; break;
 
-		case 15: active=16; break;
-		case 16: active=17; break;
-		case 17: active=18; break;
-		case 18: active=15; break;
+		case 15: game.active=16; break;
+		case 16: game.active=17; break;
+		case 17: game.active=18; break;
+		case 18: game.active=15; break;
 		default: break;
 	}
 }
 
 int aclockwise() { //turn anticlockwise
-	switch (active) {
-		case 1:  active=2;  break;
-		case 2:  active=1;  break;
+	switch (game.active) {
+		case 1:  game.active=2;  break;
+		case 2:  game.active=1;  break;
 
-		case 3:  active=4;  break;
-		case 4:  active=3;  break;
+		case 3:  game.active=4;  break;
+		case 4:  game.active=3;  break;
 
-		case 5:  active=6;  break;
-		case 6:  active=5;  break;
+		case 5:  game.active=6;  break;
+		case 6:  game.active=5;  break;
 
-		case 7:  active=10; break;
-		case 8:  active=7;  break;
-		case 9:  active=8;  break;
-		case 10: active=9;  break;
+		case 7:  game.active=10; break;
+		case 8:  game.active=7;  break;
+		case 9:  game.active=8;  break;
+		case 10: game.active=9;  break;
 
-		case 11: active=14; break;
-		case 12: active=11; break;
-		case 13: active=12; break;
-		case 14: active=13; break;
+		case 11: game.active=14; break;
+		case 12: game.active=11; break;
+		case 13: game.active=12; break;
+		case 14: game.active=13; break;
 
-		case 15: active=18; break;
-		case 16: active=15; break;
-		case 17: active=16; break;
-		case 18: active=17; break;
+		case 15: game.active=18; break;
+		case 16: game.active=15; break;
+		case 17: game.active=16; break;
+		case 18: game.active=17; break;
 		default: break;
 	}
 }
 
 int check_clock() { //check clockwise turn possibility
 	clockwise();
-	int ret=check(0, 0);
+	short ret=check(0, 0);
 	aclockwise();
 	return ret;
 }
 
 int check_aclock() { //check anticlockwise turn possibility
 	aclockwise();
-	int ret=check(0, 0);
+	short ret=check(0, 0);
 	clockwise();
 	return ret;
 }
 
 inline stop() { //make current active block a part of a map, remove lines if possible
-	short i, j, flag;
+	short i, j;
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (blocks[active][j][i]=='#') map[y+j][x+i]=color(active);
+		if (blocks[game.active][j][i]=='#')
+			map[game.y+j][game.x+i]=color(game.active);
 	//check lines
-	short lines=0;
+	short lines=0, flag;
 	for (j=1; j<21;  ++j) {
 		flag=1;
 		for (i=3;  i<13; ++i) if (map[j][i]==' ') {
@@ -315,17 +323,18 @@ inline stop() { //make current active block a part of a map, remove lines if pos
 				map[i][k]=map[i-1][k];
 		}
 	}
-	score+=lines*lines;
-	if (score>10 && delay>1){
-		delay=1+(100-score)/10;
+	game.score+=lines*lines;
+	if (game.score>10 && game.delay>1){
+		game.delay=1+(100-game.score)/10;
 		nocbreak();
-		halfdelay(delay);
+		halfdelay(game.delay);
 	}
 }
 
 void fall_comp() { //compensate falling
-	if (fallen_flag && count) --y;
-	count=(count<4) ? count+1 : 0;
+	if (game.fallen_flag && game.count) --game.y;
+	++game.count;
+//	game.count=(game.count<4) ? game.count+1 : 0;
 }
 
 int rand_num() { //random number
@@ -342,7 +351,7 @@ int rand_active() { //random block
 }
 
 int check_to_up(int j, int i) { //check if column is free
-	short k;
+	register k;
 	for (k=j; k>0; --k) if (map[k][i]!=' ') return 0;
 	return 1;
 }
@@ -361,12 +370,14 @@ int next_easy() { //returns number of the most suitable block
 	while (map[max_deep][hole_x-length]==' ') ++length;
 	//now we have everything to determine the best block
 	switch (length) { //no breaks, ih either returns  or falls to the next case
-		case 4: return 5+rand_num()%2; //I blocks
-
+		case 4: if (check_to_up(max_deep, hole_x-3) &&
+			    check_to_up(max_deep, hole_x-2) &&
+			    check_to_up(max_deep, hole_x-1))
+				return 5+rand_num()%2; //I blocks
 		case 3:
-			if (check_to_up(max_deep, hole_x-1) &&
-			    check_to_up(max_deep, hole_x-2))
-				return 7+rand_num()%8; //T, J, L blocks
+			if (check_to_up(max_deep, hole_x-2) &&
+			    check_to_up(max_deep, hole_x-1))
+				return 7+rand_num()%8; //J, L blocks
 		case 2:
 			if (check_to_up(max_deep, hole_x-1)) {
 				if (check_to_up(max_deep-1, hole_x-2) &&
@@ -394,8 +405,8 @@ void key_act() { //get key and do something with it
 	int c=getch();
 	switch (c) {
 		case 'Q': delwin(window); endwin(); exit(0); break;
-		case KEY_LEFT : if (check(-1, 0)) --x; fall_comp(); break;
-		case KEY_RIGHT: if (check( 1, 0)) ++x; fall_comp(); break;
+		case KEY_LEFT : if (check(-1, 0)) --game.x; fall_comp(); break;
+		case KEY_RIGHT: if (check( 1, 0)) ++game.x; fall_comp(); break;
 		case KEY_UP:
 			clockwise();
 			if (!check(0, 0)) aclockwise();
@@ -408,9 +419,9 @@ void key_act() { //get key and do something with it
 		break;
 		case 'd':
 			fall_comp();
-			if (mode!='l' && score>21) {
-				active=next_easy();
-				score-=20;
+			if (!game.lazymode && game.score>21) {
+				game.active=next_easy();
+				game.score-=20;
 			}
 		break;
 		case 'p':
@@ -434,15 +445,18 @@ main(int argc, char * argv[]) {
 	noecho(); //for characters not to appear at the screen
 	keypad(stdscr, TRUE); //access to additional keys
 	curs_set(0); //not to show cursor
+	game.score=0;
+	game.count=0;
+	game.delay=10;
 	short i;
 	for (i=1; i<argc; ++i) if (argv[i][0]=='-') {
-		if (argv[i][1]=='l') mode='l';
+		if (argv[i][1]=='l') game.lazymode=1;
 		else if (argv[i][1]=='s') {
 			short temp=atoi(argv[++i]);
-			if (temp<11 && temp>0) delay=11-temp;
+			if (temp<11 && temp>0) game.delay=11-temp;
 		}
 	}
-	halfdelay(delay); //game speed
+	halfdelay(game.delay); //game speed
 	init_pair(1, COLOR_YELLOW,  COLOR_YELLOW);
 	init_pair(2, COLOR_BLUE,    COLOR_BLUE);
 	init_pair(3, COLOR_MAGENTA, COLOR_MAGENTA);
@@ -453,28 +467,28 @@ main(int argc, char * argv[]) {
 	window=newwin(22, 22, 0,  0);
 	info  =newwin( 6, 10, 0, 22);
 
-	next=rand_active();	
+	game.next=rand_active();	
 	while (1) {
-		fallen_flag=0;
-		if (mode=='l') {
-			active=next_easy();
+		game.fallen_flag=0;
+		if (game.lazymode) {
+			game.active=next_easy();
 		} else {
-			active=next;
-			next=rand_active();
+			game.active=game.next;
+			game.next=rand_active();
 		}
 		print_next();
-		x=6;
-		y=1;
+		game.x=6;
+		game.y=1;
 		if (!check(0, 0)) break;
 		upd_part();
 		while (check(0, 1) || check(-1, 0) || check(1, 0) ||
 				check_clock() || check_aclock()) {
 			key_act();
 			if (check(0, 1)) {
-				++y;
-				fallen_flag=1;
+				++game.y;
+				game.fallen_flag=1;
 			} else {
-				fallen_flag=0;
+				game.fallen_flag=0;
 				break;
 			}
 			upd_part();
