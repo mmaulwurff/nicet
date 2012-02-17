@@ -18,7 +18,14 @@ d: (in normal mode only) summon desired block
 p: pause and resume game
 Q: quit game
 
+Score:
+1 line terminated: 1 point
+2 lines terminated: 4 points
+3 lines terminated: 8 points
+4 lines terminated: 16 points
+
 Compile notes:
 gcc -lncurses -o nicet.bin
+(libncurses5-dev should be installed)
 
 Todo: highscores list

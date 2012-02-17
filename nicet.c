@@ -360,25 +360,34 @@ int next_easy() { //returns number of the most suitable block
 	short length=0;
 	while (map[max_deep][hole_x-length]==' ') ++length;
 	//now we have everything to determine the best block
-	if (length==4) return 5+rand_num()%2; //I blocks
-	else if (length==3) return 7+rand_num()%8; //T, J, L blocks
-	else if (length==2) {
-		if (check_to_up(max_deep-1, hole_x-2) &&
-		    check_to_up(max_deep-1, hole_x+1)) return rand_num()%5; //O, S, Z
-		else if (check_to_up(max_deep-1, hole_x-2)) return 3+rand_num()%2; //Z
-		else if (check_to_up(max_deep-1, hole_x+1)) return rand_num()%3; //S, O
-		else return 0; //O block
+	switch (length) { //no breaks, ih either returns  or falls to the next case
+		case 4: return 5+rand_num()%2; //I blocks
+
+		case 3:
+			if (check_to_up(max_deep, hole_x-1) &&
+			    check_to_up(max_deep, hole_x-2))
+				return 7+rand_num()%8; //T, J, L blocks
+		case 2:
+			if (check_to_up(max_deep, hole_x-1)) {
+				if (check_to_up(max_deep-1, hole_x-2) &&
+				    check_to_up(max_deep-1, hole_x+1))
+					return rand_num()%5; //O, S, Z
+				else if (check_to_up(max_deep-1, hole_x-2))
+					return 3+rand_num()%2; //Z
+				else if (check_to_up(max_deep-1, hole_x+1))
+					return rand_num()%3; //S, O
+			}
+		case 1:
+			if (check_to_up(max_deep-1, hole_x-1) ||
+			    check_to_up(max_deep-1, hole_x+1)) return 15+rand_num()%4; //T
+			else if (check_to_up(max_deep-2, hole_x-1))
+				return 11+rand_num()%4; //L
+			else if (check_to_up(max_deep-2, hole_x+1))
+				return 7+rand_num()%4; //J
+			else return 5+rand_num()%2; //I
+
+		default: return rand_active();
 	}
-	else if (length==1) {
-		if (check_to_up(max_deep-1, hole_x-1) ||
-		    check_to_up(max_deep-1, hole_x+1)) return 15+rand_num()%4; //T
-		else if (check_to_up(max_deep-2, hole_x-1))
-			return 11+rand_num()%4; //L
-		else if (check_to_up(max_deep-2, hole_x+1))
-			return 7+rand_num()%4; //J
-		else return 5+rand_num()%2; //I
-	}
-	return rand_active();
 }
 
 void key_act() { //get key and do something with it
@@ -474,6 +483,7 @@ main(int argc, char * argv[]) {
 		upd_all();
 	}
 
+	wstandend(window);
 	mvwprintw(window, 0, 1, "Game Over!");
 	wrefresh(window);
 	while (getch()!='Q');
