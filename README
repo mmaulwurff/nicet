@@ -1,12 +1,12 @@
 nicet, nice tetris with text graphics
 
-In normal mode (default) it works like usual tetris game with one additional feature: desired block. Summonning it costs 20 points. It can help you in difficult situation.
-In lazy mode, nearly all blocks are desired. No next block preview is available in this mode.
+In normal mode (default) it works like usual tetris game with one additional feature: best suitable block. Summonning it costs 20 points. It can help you in difficult situation.
+In lazy mode, all blocks are best suitable. No next block preview is available in this mode.
 
 	Command line options:
 
 [-s speed] - set game speed (from 1 to 10)
-[-l] - play lazy mode
+[-l] - play in lazy mode
 
 	Game controls:
 
@@ -14,7 +14,7 @@ Left and right arrows: move current falling block
 Down arrow: move block down
 Up arrow: rotate block clockwise
 Space: rotate block anticlockwise
-d: (in normal mode only) summon desired block
+b: (in normal mode only) summon best suitable block
 p: pause and resume game
 Q: quit game
 
@@ -30,8 +30,11 @@ libncurses5 should be installed
 
 	Compile notes:
 
+*nix:
 gcc -lncurses -o nicet.bin
 (libncurses5-dev should be installed)
+
+For MS Windows users, take a look at PDCurses library. Maybe it will work instead of ncurses.
 
 	Todo:
 highscores list

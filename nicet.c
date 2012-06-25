@@ -16,7 +16,7 @@
 */
 
 #include <stdio.h>
-#include <ncurses.h>
+#include <curses.h>
 #include <stdlib.h>
 
 char blocks[][4][4]={
@@ -169,9 +169,9 @@ int color(int in) { //colors of blocks. used in wattrset
 }
 
 void upd_part() { //updates only current block position
-	short i, j;
-	//erase
 	wstandend(window);
+	//erase
+	short i, j;
 	for (i=game.x-1; i<=game.x+4; ++i)
 	for (j=game.y-1; j<=game.y+3; ++j)
 		if (map[j][i]==' ') mvwprintw(window, j, 2*(i-2)-1, "  ");
@@ -187,11 +187,7 @@ void upd_part() { //updates only current block position
 }
 
 void print_next() { //next block preview
-	wstandend(info);
 	werase(info);
-	box(info, 0, 0);
-	mvwprintw(info, 0, 0, "Score:%4d", game.score);
-	mvwprintw(info, 5, 1, "Speed:%2d", 11-game.delay);
 	if (!game.lazymode) {
 		wattrset(info, COLOR_PAIR(color(game.next)));
 		short i, j;
@@ -199,23 +195,26 @@ void print_next() { //next block preview
 		for (j=0; j<4; ++j)
 			if (blocks[game.next][j][i]=='#')
 				mvwprintw(info, j+1, 2*i+1, "##");
-	} else {
-		mvwprintw(info, 2, 3, "Lazy");
-		mvwprintw(info, 3, 3, "Mode");
-	}
+	} else
+		mvwprintw(info, 2, 3, "Lazy\n   Mode");
+	wstandend(info);
+	box(info, 0, 0);
+	mvwprintw(info, 0, 0, "Score:%4d", game.score);
+	mvwprintw(info, 5, 1, "Speed:%2d", 11-game.delay);
 	wrefresh(info);
 }
 
 void upd_all() { //update all map
+	wmove(window, 1, 1);
 	short i, j;
-	for (j=1; j<21; ++j)
+	for (j=1; j<21; ++j, wprintw(window, "\n "))
 	for (i=3; i<13; ++i)
 		if (map[j][i]!=' ') {
 			wattrset(window, COLOR_PAIR(map[j][i]));
-			mvwprintw(window, j, 2*(i-2)-1, "##");
+			wprintw(window, "##");
 		} else {
 			wstandend(window);
-			mvwprintw(window, j, 2*(i-2)-1, "  ");
+			wprintw(window, "  ");
 		}
 	wrefresh(window);
 }
@@ -334,7 +333,6 @@ inline stop() { //make current active block a part of a map, remove lines if pos
 void fall_comp() { //compensate falling
 	if (game.fallen_flag && game.count) --game.y;
 	++game.count;
-//	game.count=(game.count<4) ? game.count+1 : 0;
 }
 
 int rand_num() { //random number
@@ -404,7 +402,7 @@ int next_easy() { //returns number of the most suitable block
 void key_act() { //get key and do something with it
 	int c=getch();
 	switch (c) {
-		case 'Q': delwin(window); endwin(); exit(0); break;
+		case 'Q': delwin(window); delwin(info); endwin(); exit(0); break;
 		case KEY_LEFT : if (check(-1, 0)) --game.x; fall_comp(); break;
 		case KEY_RIGHT: if (check( 1, 0)) ++game.x; fall_comp(); break;
 		case KEY_UP:
@@ -417,7 +415,7 @@ void key_act() { //get key and do something with it
 			if (!check(0, 0)) clockwise();
 			fall_comp();
 		break;
-		case 'd':
+		case 'b':
 			fall_comp();
 			if (!game.lazymode && game.score>21) {
 				game.active=next_easy();
@@ -450,7 +448,8 @@ main(int argc, char * argv[]) {
 	game.delay=10;
 	short i;
 	for (i=1; i<argc; ++i) if (argv[i][0]=='-') {
-		if (argv[i][1]=='l') game.lazymode=1;
+		if (argv[i][1]=='l')
+			game.lazymode=1;
 		else if (argv[i][1]=='s') {
 			short temp=atoi(argv[++i]);
 			if (temp<11 && temp>0) game.delay=11-temp;
@@ -466,13 +465,13 @@ main(int argc, char * argv[]) {
 	init_pair(7, COLOR_WHITE,   COLOR_WHITE);
 	window=newwin(22, 22, 0,  0);
 	info  =newwin( 6, 10, 0, 22);
-
-	game.next=rand_active();	
+	game.next=rand_active();
+	getch();
 	while (1) {
 		game.fallen_flag=0;
-		if (game.lazymode) {
+		if (game.lazymode)
 			game.active=next_easy();
-		} else {
+		else {
 			game.active=game.next;
 			game.next=rand_active();
 		}
@@ -481,8 +480,7 @@ main(int argc, char * argv[]) {
 		game.y=1;
 		if (!check(0, 0)) break;
 		upd_part();
-		while (check(0, 1) || check(-1, 0) || check(1, 0) ||
-				check_clock() || check_aclock()) {
+		while (check(0, 1) || check(-1, 0) || check(1, 0) || check_clock() || check_aclock()) {
 			key_act();
 			if (check(0, 1)) {
 				++game.y;
@@ -496,11 +494,12 @@ main(int argc, char * argv[]) {
 		stop();
 		upd_all();
 	}
-
 	wstandend(window);
+	box(window, 0, 0);
 	mvwprintw(window, 0, 1, "Game Over!");
 	wrefresh(window);
 	while (getch()!='Q');
 	delwin(window);
+	delwin(info);
 	endwin();
 }
