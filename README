@@ -34,7 +34,8 @@ libncurses5 should be installed
 gcc -lncurses -o nicet.bin
 (libncurses5-dev should be installed)
 
-For MS Windows users, take a look at PDCurses library. Maybe it will work instead of ncurses.
+For MS Windows users, compilation is possible with PDcurses library, which you can get here:
+http://pdcurses.sourceforge.net/
 
 	Todo:
 highscores list

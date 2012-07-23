@@ -15,106 +15,166 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <curses.h>
+//#include <stdio.h>
+#include "curses.h"
 #include <stdlib.h>
+#include <time.h>
 
-char blocks[][4][4]={
-	{//0
-		"    ",
-		" ## ",
-		" ## ",
-		"    "
-	}, {//1
-		" #  ",
-		" ## ",
-		"  # ",
-		"    "
-	}, {//2
-		"    ",
-		"  ##",
-		" ## ",
-		"    "
-	}, {//3
-		" #  ",
-		"##  ",
-		"#   ",
-		"    "
-	}, {//4
-		"    ",
-		"##  ",
-		" ## ",
-		"    "
-	}, {//5
-		"    ",
-		"    ",
-		"####",
-		"    "
-	}, {//6
-		" #  ",
-		" #  ",
-		" #  ",
-		" #  "
-	}, {//7
-		"    ",
-		"#   ",
-		"### ",
-		"    "
-	}, {//8
-		"    ",
-		" ## ",
-		" #  ",
-		" #  "
-	}, {//9
-		"    ",
-		"    ",
-		"### ",
-		"  # "
-	}, {//10
-		"    ",
-		" #  ",
-		" #  ",
-		"##  "
-	}, {//11
-		"  # ",
-		"### ",
-		"    ",
-		"    "
-	}, {//12
-		" #  ",
-		" #  ",
-		" ## ",
-		"    "
-	}, {//13
-		"    ",
-		"### ",
-		"#   ",
-		"    "
-	}, {//14
-		"##  ",
-		" #  ",
-		" #  ",
-		"    "
-	}, {//15
-		" #  ",
-		"### ",
-		"    ",
-		"    "
-	}, {//16
-		" #  ",
-		" ## ",
-		" #  ",
-		"    "
-	}, {//17
-		"    ",
-		"### ",
-		" #  ",
-		"    "
-	}, {//18
-		" #  ",
-		"##  ",
-		" #  ",
-		"    "
+const char const blocks[][4][4][4]={
+	{ //O
+		{
+			"    ",
+			" ## ",
+			" ## ",
+			"    "
+		}, {
+			"    ",
+			" ## ",
+			" ## ",
+			"    "
+		}, {
+			"    ",
+			" ## ",
+			" ## ",
+			"    "
+		}, {
+			"    ",
+			" ## ",
+			" ## ",
+			"    "
+		}
+	}, { //S
+		{
+			" #  ",
+			" ## ",
+			"  # ",
+			"    "
+		}, {
+			"    ",
+			"  ##",
+			" ## ",
+			"    "
+		}, {
+			" #  ",
+			" ## ",
+			"  # ",
+			"    "
+		}, {
+			"    ",
+			"  ##",
+			" ## ",
+			"    "
+		}
+	}, { //Z
+		{
+			" #  ",
+			"##  ",
+			"#   ",
+			"    "
+		}, {
+			"    ",
+			"##  ",
+			" ## ",
+			"    "
+		}, {
+			" #  ",
+			"##  ",
+			"#   ",
+			"    "
+		}, {
+			"    ",
+			"##  ",
+			" ## ",
+			"    "
+		}
+	}, { //I
+		{
+			"    ",
+			"    ",
+			"####",
+			"    "
+		}, {
+			" #  ",
+			" #  ",
+			" #  ",
+			" #  "
+		}, {
+			"    ",
+			"    ",
+			"####",
+			"    "
+		}, {
+			" #  ",
+			" #  ",
+			" #  ",
+			" #  "
+		}
+	}, { //J
+		{
+			"    ",
+			"#   ",
+			"### ",
+			"    "
+		}, {
+			"    ",
+			" ## ",
+			" #  ",
+			" #  "
+		}, {
+			"    ",
+			"    ",
+			"### ",
+			"  # "
+		}, {
+			"    ",
+			" #  ",
+			" #  ",
+			"##  "
+		}
+	}, { //L
+		{
+			"  # ",
+			"### ",
+			"    ",
+			"    "
+		}, {
+			" #  ",
+			" #  ",
+			" ## ",
+			"    "
+		}, {
+			"    ",
+			"### ",
+			"#   ",
+			"    "
+		}, {
+			"##  ",
+			" #  ",
+			" #  ",
+			"    "
+		}
+	}, { //T
+		{
+			" #  ",
+			"### ",
+			"    ",
+			"    "
+		}, {
+			" #  ",
+			" ## ",
+			" #  ",
+			"    "
+		}, {
+			"    ",
+			"### ",
+			" #  ",
+			"    "
+		}, {
+			" #  ",
+			"##  ",
+			" #  ",
+			"    "
+		}
 	}
 };
 
@@ -149,24 +209,19 @@ WINDOW * window, * info;
 struct {
 	unsigned x : 4; //left upper corner of active block
 	unsigned y : 5;
-	unsigned active : 5;
+	unsigned active;
+	unsigned dir : 2;
 	unsigned next : 5; //blocks
+	unsigned next_dir : 2;
 	unsigned fallen_flag : 1; //needed to compensate falling sometimes
 	unsigned count : 2; //for not to fall everytime player presses a key
 	unsigned score : 10;
-	unsigned delay : 4; //0.1 seconds, speed=11-delay
+	unsigned speed : 4; //0.1 seconds, delay=11-speed
+	unsigned start_speed : 4;
 	unsigned lazymode : 1;
 } game;
 
-int color(int in) { //colors of blocks. used in wattrset
-	if (in==0) return 1;
-	else if (in<3)  return 2;
-	else if (in<5)  return 3;
-	else if (in<7)  return 4;
-	else if (in<11) return 5;
-	else if (in<15) return 6;
-	return 7;
-}
+inline int color(int in) { return (in%7)+1; } //colors of blocks. 7 is number of colors.
 
 void upd_part() { //updates only current block position
 	wstandend(window);
@@ -179,7 +234,7 @@ void upd_part() { //updates only current block position
 	wattrset(window, COLOR_PAIR(color(game.active)));
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (blocks[game.active][j][i]=='#')
+		if (blocks[game.active][game.dir][j][i]=='#')
 			mvwprintw(window, game.y+j, 2*(game.x+i-2)-1, "##");
 	wstandend(window);
 	box(window, 0, 0);
@@ -193,14 +248,14 @@ void print_next() { //next block preview
 		short i, j;
 		for (i=0; i<4; ++i)
 		for (j=0; j<4; ++j)
-			if (blocks[game.next][j][i]=='#')
+			if (blocks[game.next][game.next_dir][j][i]=='#')
 				mvwprintw(info, j+1, 2*i+1, "##");
 	} else
 		mvwprintw(info, 2, 3, "Lazy\n   Mode");
 	wstandend(info);
 	box(info, 0, 0);
 	mvwprintw(info, 0, 0, "Score:%4d", game.score);
-	mvwprintw(info, 5, 1, "Speed:%2d", 11-game.delay);
+	mvwprintw(info, 5, 1, "Speed:%2d", game.speed);
 	wrefresh(info);
 }
 
@@ -224,67 +279,12 @@ int check(int side, int bottom) { //check fitness of block position and a map
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
 		if (map[game.y+j+bottom][game.x+i+side]!=' ' &&
-				blocks[game.active][j][i]=='#') return 0;
+				blocks[game.active][game.dir][j][i]=='#') return 0;
 	return 1;
 }
 
-int clockwise() { //turn
-	switch (game.active) {
-		case  1: game.active=2;  break;
-		case  2: game.active=1;  break;
-
-		case  3: game.active=4;  break;
-		case  4: game.active=3;  break;
-
-		case  5: game.active=6;  break;
-		case  6: game.active=5;  break;
-
-		case  7: game.active=8;  break;
-		case  8: game.active=9;  break;
-		case  9: game.active=10; break;
-		case 10: game.active=7;  break;
-
-		case 11: game.active=12; break;
-		case 12: game.active=13; break;
-		case 13: game.active=14; break;
-		case 14: game.active=11; break;
-
-		case 15: game.active=16; break;
-		case 16: game.active=17; break;
-		case 17: game.active=18; break;
-		case 18: game.active=15; break;
-		default: break;
-	}
-}
-
-int aclockwise() { //turn anticlockwise
-	switch (game.active) {
-		case 1:  game.active=2;  break;
-		case 2:  game.active=1;  break;
-
-		case 3:  game.active=4;  break;
-		case 4:  game.active=3;  break;
-
-		case 5:  game.active=6;  break;
-		case 6:  game.active=5;  break;
-
-		case 7:  game.active=10; break;
-		case 8:  game.active=7;  break;
-		case 9:  game.active=8;  break;
-		case 10: game.active=9;  break;
-
-		case 11: game.active=14; break;
-		case 12: game.active=11; break;
-		case 13: game.active=12; break;
-		case 14: game.active=13; break;
-
-		case 15: game.active=18; break;
-		case 16: game.active=15; break;
-		case 17: game.active=16; break;
-		case 18: game.active=17; break;
-		default: break;
-	}
-}
+inline int clockwise()  { ++game.dir; } //turn
+inline int aclockwise() { --game.dir; } //turn anticlockwise
 
 int check_clock() { //check clockwise turn possibility
 	clockwise();
@@ -304,7 +304,7 @@ inline stop() { //make current active block a part of a map, remove lines if pos
 	short i, j;
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (blocks[game.active][j][i]=='#')
+		if (blocks[game.active][game.dir][j][i]=='#')
 			map[game.y+j][game.x+i]=color(game.active);
 	//check lines
 	short lines=0, flag;
@@ -322,11 +322,12 @@ inline stop() { //make current active block a part of a map, remove lines if pos
 				map[i][k]=map[i-1][k];
 		}
 	}
+	short temp_score=game.score;
 	game.score+=lines*lines;
-	if (game.score>10 && game.delay>1){
-		game.delay=1+(100-game.score)/10;
-		nocbreak();
-		halfdelay(game.delay);
+	if (game.speed<10 && temp_score/10<game.score/10) {
+		game.speed+=1+(game.score-temp_score)/10;
+		//nocbreak();
+		halfdelay(11-game.speed);
 	}
 }
 
@@ -336,16 +337,12 @@ void fall_comp() { //compensate falling
 }
 
 int rand_num() { //random number
-	FILE * file=fopen("/dev/urandom", "r");
+/*	FILE * file=fopen("/dev/urandom", "r");
 	int temp=fgetc(file);
 	fclose(file);
-	return temp;
-}
-
-int rand_active() { //random block
-	short temp=rand_num()%21;
-	if (temp>18) return 0; //for 'O' block to spawn more often
-	return temp;
+	return temp;*/
+	srand((unsigned)time((time_t *)NULL));
+	return rand();
 }
 
 int check_to_up(int j, int i) { //check if column is free
@@ -353,6 +350,8 @@ int check_to_up(int j, int i) { //check if column is free
 	for (k=j; k>0; --k) if (map[k][i]!=' ') return 0;
 	return 1;
 }
+
+inline int next_rand() { return rand_num()%(sizeof(blocks)/sizeof(*blocks)); }
 
 int next_easy() { //returns number of the most suitable block
 	short i, j;
@@ -395,7 +394,7 @@ int next_easy() { //returns number of the most suitable block
 				return 7+rand_num()%4; //J
 			else return 5+rand_num()%2; //I
 
-		default: return rand_active();
+		default: return next_rand();
 	}
 }
 
@@ -445,17 +444,18 @@ main(int argc, char * argv[]) {
 	curs_set(0); //not to show cursor
 	game.score=0;
 	game.count=0;
-	game.delay=10;
+	game.start_speed=1;
 	short i;
 	for (i=1; i<argc; ++i) if (argv[i][0]=='-') {
 		if (argv[i][1]=='l')
 			game.lazymode=1;
 		else if (argv[i][1]=='s') {
 			short temp=atoi(argv[++i]);
-			if (temp<11 && temp>0) game.delay=11-temp;
+			if (temp<11 && temp>0) game.start_speed=temp;
 		}
 	}
-	halfdelay(game.delay); //game speed
+	game.speed=game.start_speed;
+	halfdelay(11-game.speed); //game speed
 	init_pair(1, COLOR_YELLOW,  COLOR_YELLOW);
 	init_pair(2, COLOR_BLUE,    COLOR_BLUE);
 	init_pair(3, COLOR_MAGENTA, COLOR_MAGENTA);
@@ -465,7 +465,8 @@ main(int argc, char * argv[]) {
 	init_pair(7, COLOR_WHITE,   COLOR_WHITE);
 	window=newwin(22, 22, 0,  0);
 	info  =newwin( 6, 10, 0, 22);
-	game.next=rand_active();
+	game.next=next_rand();
+	game.next_dir=rand_num()%4;
 	getch();
 	while (1) {
 		game.fallen_flag=0;
@@ -473,8 +474,10 @@ main(int argc, char * argv[]) {
 			game.active=next_easy();
 		else {
 			game.active=game.next;
-			game.next=rand_active();
+			game.next=next_rand();
 		}
+		game.dir=game.next_dir;
+		game.next_dir=rand_num()%4;
 		print_next();
 		game.x=6;
 		game.y=1;
