@@ -15,12 +15,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <stdio.h>
 #include "curses.h"
 #include <stdlib.h>
 #include <time.h>
 
+/* one can easily add new figures by adding his own ones to the list below.
+ * there should be four forms (positions) for all the figures, order is how they turn clockwise.
+ * figures are painted in 4x4 squares with ' ' and '#' symbols. ' ' means nothing, '#' means figure.
+ * don't forget about brackets and commas.
+ * also one can comment out figures he don't like.
+ * (desired block feature will work in unpredictable way if you comment out standard figures or change their order).
+ * (do not comment out all the figures).
+ * no code editing required!
+ */
 const char const blocks[][4][4][4]={
+	// standard tetris figures:
 	{ //O
 		{
 			"    ",
@@ -176,7 +185,55 @@ const char const blocks[][4][4][4]={
 			"    "
 		}
 	}
+	//additional figures:
+	/*, { //C
+		{
+			"    ",
+			"### ",
+			"# # ",
+			"    "
+		}, {
+			"##  ",
+			" #  ",
+			"##  ",
+			"    "
+		}, {
+			"# # ",
+			"### ",
+			"    ",
+			"    "
+		}, {
+			" ## ",
+			" #  ",
+			" ## ",
+			"    "
+		}
+	}*//*, { //+
+		{
+			" #  ",
+			"### ",
+			" #  ",
+			"    "
+		}, {
+			" #  ",
+			"### ",
+			" #  ",
+			"    "
+		}, {
+			" #  ",
+			"### ",
+			" #  ",
+			"    "
+		}, {
+			" #  ",
+			"### ",
+			" #  ",
+			"    "
+		}
+	}*/
 };
+
+enum { O, S, Z, I, J, L, T };
 
 char map[24][16]={
 	"################",
@@ -215,7 +272,7 @@ struct {
 	unsigned next_dir : 2;
 	unsigned fallen_flag : 1; //needed to compensate falling sometimes
 	unsigned count : 2; //for not to fall everytime player presses a key
-	unsigned score : 10;
+	unsigned score; //: 10; //nothing is impossible
 	unsigned speed : 4; //0.1 seconds, delay=11-speed
 	unsigned start_speed : 4;
 	unsigned lazymode : 1;
@@ -248,14 +305,15 @@ void print_next() { //next block preview
 		short i, j;
 		for (i=0; i<4; ++i)
 		for (j=0; j<4; ++j)
-			if (blocks[game.next][game.next_dir][j][i]=='#')
-				mvwprintw(info, j+1, 2*i+1, "##");
+			if (blocks[game.next][game.next_dir][j][i]!=' ')
+				mvwprintw(info, j+2, 2*i+1, "##");
 	} else
-		mvwprintw(info, 2, 3, "Lazy\n   Mode");
+		mvwprintw(info, 3, 3, "Lazy\n   Mode");
 	wstandend(info);
 	box(info, 0, 0);
-	mvwprintw(info, 0, 0, "Score:%4d", game.score);
-	mvwprintw(info, 5, 1, "Speed:%2d", game.speed);
+	mvwprintw(info, 0, 2, "Score:");
+	mvwprintw(info, 1, 1, "%8d", game.score);
+	mvwprintw(info, 6, 1, "Speed:%2d", game.speed);
 	wrefresh(info);
 }
 
@@ -279,7 +337,7 @@ int check(int side, int bottom) { //check fitness of block position and a map
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
 		if (map[game.y+j+bottom][game.x+i+side]!=' ' &&
-				blocks[game.active][game.dir][j][i]=='#') return 0;
+				blocks[game.active][game.dir][j][i]!=' ') return 0;
 	return 1;
 }
 
@@ -304,7 +362,7 @@ inline stop() { //make current active block a part of a map, remove lines if pos
 	short i, j;
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (blocks[game.active][game.dir][j][i]=='#')
+		if (blocks[game.active][game.dir][j][i]!=' ')
 			map[game.y+j][game.x+i]=color(game.active);
 	//check lines
 	short lines=0, flag;
@@ -326,7 +384,7 @@ inline stop() { //make current active block a part of a map, remove lines if pos
 	game.score+=lines*lines;
 	if (game.speed<10 && temp_score/10<game.score/10) {
 		game.speed+=1+(game.score-temp_score)/10;
-		//nocbreak();
+		if (game.speed>10) game.speed=10;
 		halfdelay(11-game.speed);
 	}
 }
@@ -337,13 +395,11 @@ void fall_comp() { //compensate falling
 }
 
 int rand_num() { //random number
-/*	FILE * file=fopen("/dev/urandom", "r");
-	int temp=fgetc(file);
-	fclose(file);
-	return temp;*/
-	srand((unsigned)time((time_t *)NULL));
+	srand( (unsigned)time((time_t *)NULL) );
 	return rand();
 }
+
+inline int next_rand() { return rand_num()%(sizeof(blocks)/sizeof(*blocks)); }
 
 int check_to_up(int j, int i) { //check if column is free
 	register k;
@@ -351,11 +407,11 @@ int check_to_up(int j, int i) { //check if column is free
 	return 1;
 }
 
-inline int next_rand() { return rand_num()%(sizeof(blocks)/sizeof(*blocks)); }
-
-int next_easy() { //returns number of the most suitable block
+int next_lasy() { //returns number of the most suitable block
+	//probabilities are disbalanced, but who cares?
 	short i, j;
-	short max_deep=0, hole_x;
+	short max_deep=0;
+	short hole_x; //the right end of the pit
 	for (i=3; i<13; ++i) {
 		for (j=0; map[j+1][i]==' '; ++j);
 		if (j>=max_deep) {
@@ -366,33 +422,81 @@ int next_easy() { //returns number of the most suitable block
 	short length=0;
 	while (map[max_deep][hole_x-length]==' ') ++length;
 	//now we have everything to determine the best block
-	switch (length) { //no breaks, ih either returns  or falls to the next case
+	switch (length) { //no breaks, it either returns  or falls to the next case
 		case 4: if (check_to_up(max_deep, hole_x-3) &&
 			    check_to_up(max_deep, hole_x-2) &&
 			    check_to_up(max_deep, hole_x-1))
-				return 5+rand_num()%2; //I blocks
+				switch (rand_num()%5) {
+					case 0: return I;
+					case 1: return O;
+					case 2: return J;
+					case 3: return L;
+					case 4: return T;
+				}
 		case 3:
 			if (check_to_up(max_deep, hole_x-2) &&
-			    check_to_up(max_deep, hole_x-1))
-				return 7+rand_num()%8; //J, L blocks
+			    check_to_up(max_deep, hole_x-1)) {
+				if (check_to_up(max_deep-1, hole_x+1))
+					if (0==rand_num()%4) return S;
+
+				if (check_to_up(max_deep-1, hole_x-3))
+					if (0==rand_num()%4) return Z;
+
+				switch (rand_num()%3) {
+					case 0: return L;
+					case 1: return T;
+					case 2: return J;
+				}
+			}
 		case 2:
 			if (check_to_up(max_deep, hole_x-1)) {
-				if (check_to_up(max_deep-1, hole_x-2) &&
-				    check_to_up(max_deep-1, hole_x+1))
-					return rand_num()%5; //O, S, Z
-				else if (check_to_up(max_deep-1, hole_x-2))
-					return 3+rand_num()%2; //Z
-				else if (check_to_up(max_deep-1, hole_x+1))
-					return rand_num()%3; //S, O
+				if (check_to_up(max_deep-1, hole_x-2))
+					if (0==rand_num()%4) return Z;
+
+				if (check_to_up(max_deep-1, hole_x+1))
+					if (0==rand_num()%4) return S;
+
+				switch (rand_num()%3) {
+					case 0: return O;
+					case 1: return L;
+					case 2: return J;
+				}
 			}
 		case 1:
-			if (check_to_up(max_deep-1, hole_x-1) ||
-			    check_to_up(max_deep-1, hole_x+1)) return 15+rand_num()%4; //T
-			else if (check_to_up(max_deep-2, hole_x-1))
-				return 11+rand_num()%4; //L
-			else if (check_to_up(max_deep-2, hole_x+1))
-				return 7+rand_num()%4; //J
-			else return 5+rand_num()%2; //I
+			if (!check_to_up(max_deep-1, hole_x-1) &&
+			     check_to_up(max_deep-2, hole_x-1) &&
+			     check_to_up(max_deep-1, hole_x+1))
+				switch (rand_num()%3) {
+					case 0: return L;
+					case 1: return Z;
+					case 2: return T;
+				}
+
+			if (!check_to_up(max_deep-1, hole_x+1) &&
+			     check_to_up(max_deep-2, hole_x+1) &&
+			     check_to_up(max_deep-1, hole_x-1))
+				switch (rand_num()%3) {
+					case 0: return J;
+					case 1: return S;
+					case 2: return T;
+				}
+
+			if (check_to_up(max_deep-1, hole_x-1) &&
+			    check_to_up(max_deep-1, hole_x+1))
+				switch (rand_num()%3) {
+					case 0: return T;
+					case 1: return S;
+					case 2: return Z;
+				}
+
+			if (check_to_up(max_deep-2, hole_x-1) &&
+			    check_to_up(max_deep-2, hole_x+1))
+				switch (rand_num()%3) {
+					case 0: return L;
+					case 1: return J;
+				}
+
+			return I;
 
 		default: return next_rand();
 	}
@@ -416,8 +520,8 @@ void key_act() { //get key and do something with it
 		break;
 		case 'b':
 			fall_comp();
-			if (!game.lazymode && game.score>21) {
-				game.active=next_easy();
+			if (!game.lazymode && game.score>=20) {
+				game.active=next_lasy();
 				game.score-=20;
 			}
 		break;
@@ -427,7 +531,15 @@ void key_act() { //get key and do something with it
 			box(window, 0, 0);
 			mvwprintw(window, 3, 7, "Pause");
 			wrefresh(window);
-			while ('p'!=getch());
+			int ch=getch();
+			while ('p'!=ch && 'Q'!=ch)
+				ch=getch();
+			if ('Q'==ch) {
+				delwin(window);
+				delwin(info);
+				endwin();
+				exit(0);
+			}
 			upd_all();
 		break;
 		case KEY_DOWN: case ERR: break;
@@ -464,14 +576,14 @@ main(int argc, char * argv[]) {
 	init_pair(6, COLOR_CYAN,    COLOR_CYAN);
 	init_pair(7, COLOR_WHITE,   COLOR_WHITE);
 	window=newwin(22, 22, 0,  0);
-	info  =newwin( 6, 10, 0, 22);
+	info  =newwin( 7, 10, 0, 22);
 	game.next=next_rand();
 	game.next_dir=rand_num()%4;
 	getch();
 	while (1) {
 		game.fallen_flag=0;
 		if (game.lazymode)
-			game.active=next_easy();
+			game.active=next_lasy();
 		else {
 			game.active=game.next;
 			game.next=next_rand();
