@@ -21,14 +21,14 @@
 
 /* one can easily add new figures by adding his own ones to the list below.
  * there should be four forms (positions) for all the figures, order is how they turn clockwise.
- * figures are painted in 4x4 squares with ' ' and '#' symbols. ' ' means nothing, '#' means figure.
+ * figures are painted in 4x4 squares with ' ' and '#' symbols. ' ' means nothing, other symbol means figure.
  * don't forget about brackets and commas.
  * also one can comment out figures he don't like.
  * (desired block feature will work in unpredictable way if you comment out standard figures or change their order).
  * (do not comment out all the figures).
  * no code editing required!
  */
-const char const blocks[][4][4][4]={
+const char const blocks[][4][5][5]={
 	// standard tetris figures:
 	{ //O
 		{
@@ -100,17 +100,17 @@ const char const blocks[][4][4][4]={
 		{
 			"    ",
 			"    ",
-			"####",
+			"#mma",
 			"    "
 		}, {
-			" #  ",
-			" #  ",
-			" #  ",
-			" #  "
+			" u  ",
+			" l  ",
+			" w  ",
+			" u  "
 		}, {
 			"    ",
 			"    ",
-			"####",
+			"rff#",
 			"    "
 		}, {
 			" #  ",
@@ -235,7 +235,7 @@ const char const blocks[][4][4][4]={
 
 enum { O, S, Z, I, J, L, T };
 
-char map[24][16]={
+char map[24][17]={
 	"################",
 	"###          ###",
 	"###          ###",
@@ -278,7 +278,7 @@ struct {
 	unsigned lazymode : 1;
 } game;
 
-inline int color(int in) { return (in%7)+1; } //colors of blocks. 7 is number of colors.
+int color(int in) { return (in%7)+1; } //colors of blocks. 7 is number of colors.
 
 void upd_part() { //updates only current block position
 	wstandend(window);
@@ -291,7 +291,7 @@ void upd_part() { //updates only current block position
 	wattrset(window, COLOR_PAIR(color(game.active)));
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
-		if (blocks[game.active][game.dir][j][i]=='#')
+		if (blocks[game.active][game.dir][j][i]!=' ')
 			mvwprintw(window, game.y+j, 2*(game.x+i-2)-1, "##");
 	wstandend(window);
 	box(window, 0, 0);
@@ -341,8 +341,8 @@ int check(int side, int bottom) { //check fitness of block position and a map
 	return 1;
 }
 
-inline int clockwise()  { ++game.dir; } //turn
-inline int aclockwise() { --game.dir; } //turn anticlockwise
+void clockwise()  { ++game.dir; } //turn
+void aclockwise() { --game.dir; } //turn anticlockwise
 
 int check_clock() { //check clockwise turn possibility
 	clockwise();
@@ -358,7 +358,7 @@ int check_aclock() { //check anticlockwise turn possibility
 	return ret;
 }
 
-inline stop() { //make current active block a part of a map, remove lines if possible
+void stop() { //make current active block a part of a map, remove lines if possible
 	short i, j;
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
@@ -399,10 +399,10 @@ int rand_num() { //random number
 	return rand();
 }
 
-inline int next_rand() { return rand_num()%(sizeof(blocks)/sizeof(*blocks)); }
+int next_rand() { return rand_num()%(sizeof(blocks)/sizeof(*blocks)); }
 
 int check_to_up(int j, int i) { //check if column is free
-	register k;
+	register int k;
 	for (k=j; k>0; --k) if (map[k][i]!=' ') return 0;
 	return 1;
 }
@@ -525,7 +525,7 @@ void key_act() { //get key and do something with it
 				game.score-=20;
 			}
 		break;
-		case 'p':
+		case 'p': {
 			fall_comp();
 			wclear(window);
 			box(window, 0, 0);
@@ -541,13 +541,13 @@ void key_act() { //get key and do something with it
 				exit(0);
 			}
 			upd_all();
-		break;
+		} break;
 		case KEY_DOWN: case ERR: break;
 		default: fall_comp(); break;
 	}
 }
 
-main(int argc, char * argv[]) {
+int main(int argc, char * argv[]) {
 	printf("\nnicet\nCopyright (C) 2012 Alexander Kromm (mmaulwurff[at]gmail.com)\nThis program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions; see COPYING for details.\n\n");
 	initscr(); //start ncurses screen
 	start_color();
