@@ -23,7 +23,7 @@
  * there should be four forms (positions) for all the figures, order is how they turn clockwise.
  * figures are painted in 4x4 squares with ' ' and '#' symbols. ' ' means nothing, other symbol means figure.
  * don't forget about brackets and commas.
- * also one can comment out figures he don't like.
+ * also one can comment out figures he doesn't like.
  * (desired block feature will work in unpredictable way if you comment out standard figures or change their order).
  * (do not comment out all the figures).
  * no code editing required!
@@ -286,13 +286,13 @@ void upd_part() { //updates only current block position
 	short i, j;
 	for (i=game.x-1; i<=game.x+4; ++i)
 	for (j=game.y-1; j<=game.y+3; ++j)
-		if (map[j][i]==' ') mvwprintw(window, j, 2*(i-2)-1, "  ");
+		if (map[j][i]==' ') mvwaddstr(window, j, 2*(i-2)-1, "  ");
 	//print new
 	wattrset(window, COLOR_PAIR(color(game.active)));
 	for (i=0; i<4; ++i)
 	for (j=0; j<4; ++j)
 		if (blocks[game.active][game.dir][j][i]!=' ')
-			mvwprintw(window, game.y+j, 2*(game.x+i-2)-1, "##");
+			mvwaddstr(window, game.y+j, 2*(game.x+i-2)-1, "##");
 	wstandend(window);
 	box(window, 0, 0);
 	wrefresh(window);
@@ -306,12 +306,12 @@ void print_next() { //next block preview
 		for (i=0; i<4; ++i)
 		for (j=0; j<4; ++j)
 			if (blocks[game.next][game.next_dir][j][i]!=' ')
-				mvwprintw(info, j+2, 2*i+1, "##");
+				mvwaddstr(info, j+2, 2*i+1, "##");
 	} else
-		mvwprintw(info, 3, 3, "Lazy\n   Mode");
+		mvwaddstr(info, 3, 3, "Lazy\n   Mode");
 	wstandend(info);
 	box(info, 0, 0);
-	mvwprintw(info, 0, 2, "Score:");
+	mvwaddstr(info, 0, 2, "Score:");
 	mvwprintw(info, 1, 1, "%8d", game.score);
 	mvwprintw(info, 6, 1, "Speed:%2d", game.speed);
 	wrefresh(info);
@@ -320,14 +320,14 @@ void print_next() { //next block preview
 void upd_all() { //update all map
 	wmove(window, 1, 1);
 	short i, j;
-	for (j=1; j<21; ++j, wprintw(window, "\n "))
+	for (j=1; j<21; ++j, waddstr(window, "\n "))
 	for (i=3; i<13; ++i)
 		if (map[j][i]!=' ') {
 			wattrset(window, COLOR_PAIR(map[j][i]));
-			wprintw(window, "##");
+			waddstr(window, "##");
 		} else {
 			wstandend(window);
-			wprintw(window, "  ");
+			waddstr(window, "  ");
 		}
 	wrefresh(window);
 }
@@ -394,12 +394,7 @@ void fall_comp() { //compensate falling
 	++game.count;
 }
 
-int rand_num() { //random number
-	srand( (unsigned)time((time_t *)NULL) );
-	return rand();
-}
-
-int next_rand() { return rand_num()%(sizeof(blocks)/sizeof(*blocks)); }
+int next_rand() { return rand()%(sizeof(blocks)/sizeof(*blocks)); }
 
 int check_to_up(int j, int i) { //check if column is free
 	register int k;
@@ -407,7 +402,92 @@ int check_to_up(int j, int i) { //check if column is free
 	return 1;
 }
 
-int next_lasy() { //returns number of the most suitable block
+int next_lasy() {
+	struct {
+		unsigned short height;
+		unsigned short height_left;
+		unsigned short height_right;
+	} columns[10];
+
+	unsigned short i;
+	unsigned short min_height=20;
+	unsigned short max_height=0;
+
+	for (i=3; i<13; ++i) {
+		unsigned short j;
+		for (j=1; ' '==map[j][i-1]; ++j);
+		columns[i-3].height_left=20+1-j;
+
+		for (j=1; ' '==map[j][i]; ++j);
+		columns[i-3].height=20+1-j;
+
+		if ( min_height > 20+1-j )
+			min_height=20+1-j;
+
+		if ( max_height < 20+1-j )
+			max_height=20+1-j;
+
+		for (j=1; ' '==map[j][i+1]; ++j);
+		columns[i-3].height_right=20+1-j;
+	}
+
+	unsigned short flag_random=0;
+	unsigned short check_pit=0;
+	for (i=0; i<10; ++i) {
+		if (columns[i].height==min_height)
+			++check_pit;
+		else
+			check_pit=0;
+
+		if (4<=check_pit) {
+			flag_random=1;
+			break;
+		}
+	}
+
+	if ( !max_height || flag_random)
+		switch ( rand()%5 ) {
+			case 0: return O;
+			case 1: return T;
+			case 2: return L;
+			case 3: return J;
+			case 4: return I;
+	}
+
+	unsigned short best_n;
+	unsigned short max_dif=0;
+	for (i=0; i<10; ++i)
+		if (columns[i].height==min_height) {
+			unsigned short min_neighb=( columns[i].height_left-columns[i].height < columns[i].height_right-columns[i].height ) ?
+				columns[i].height_left-columns[i].height :
+				columns[i].height_right-columns[i].height;
+			if ( max_dif < min_neighb ) {
+				best_n=i;
+				max_dif=min_neighb;
+			}
+		}
+
+	if ( max_dif >= 3 )
+		return I;
+
+	if ( max_dif==2 ) {
+		if (columns[best_n].height_right-columns[best_n].height==2)
+			return J;
+		else
+			return L;
+	}
+
+	if ( max_dif==1 ) {
+		if (columns[best_n].height_right-columns[best_n].height==1)
+			return ( rand()%2 ) ? Z : T;
+		else
+			return ( rand()%2 ) ? S : T;
+	}
+
+	return O; //max_dif==0
+}
+
+/*int next_lasy_old() { //returns number of the most suitable block
 	//probabilities are disbalanced, but who cares?
 	short i, j;
 	short max_deep=0;
@@ -426,7 +506,7 @@ int next_lasy() { //returns number of the most suitable block
 		case 4: if (check_to_up(max_deep, hole_x-3) &&
 			    check_to_up(max_deep, hole_x-2) &&
 			    check_to_up(max_deep, hole_x-1))
-				switch (rand_num()%5) {
+				switch (rand()%5) {
 					case 0: return I;
 					case 1: return O;
 					case 2: return J;
@@ -437,12 +517,12 @@ int next_lasy() { //returns number of the most suitable block
 			if (check_to_up(max_deep, hole_x-2) &&
 			    check_to_up(max_deep, hole_x-1)) {
 				if (check_to_up(max_deep-1, hole_x+1))
-					if (0==rand_num()%4) return S;
+					if (0==rand()%4) return S;
 
 				if (check_to_up(max_deep-1, hole_x-3))
-					if (0==rand_num()%4) return Z;
+					if (0==rand()%4) return Z;
 
-				switch (rand_num()%3) {
+				switch (rand()%3) {
 					case 0: return L;
 					case 1: return T;
 					case 2: return J;
@@ -451,12 +531,12 @@ int next_lasy() { //returns number of the most suitable block
 		case 2:
 			if (check_to_up(max_deep, hole_x-1)) {
 				if (check_to_up(max_deep-1, hole_x-2))
-					if (0==rand_num()%4) return Z;
+					if (0==rand()%4) return Z;
 
 				if (check_to_up(max_deep-1, hole_x+1))
-					if (0==rand_num()%4) return S;
+					if (0==rand()%4) return S;
 
-				switch (rand_num()%3) {
+				switch (rand()%3) {
 					case 0: return O;
 					case 1: return L;
 					case 2: return J;
@@ -466,7 +546,7 @@ int next_lasy() { //returns number of the most suitable block
 			if (!check_to_up(max_deep-1, hole_x-1) &&
 			     check_to_up(max_deep-2, hole_x-1) &&
 			     check_to_up(max_deep-1, hole_x+1))
-				switch (rand_num()%3) {
+				switch (rand()%3) {
 					case 0: return L;
 					case 1: return Z;
 					case 2: return T;
@@ -475,7 +555,7 @@ int next_lasy() { //returns number of the most suitable block
 			if (!check_to_up(max_deep-1, hole_x+1) &&
 			     check_to_up(max_deep-2, hole_x+1) &&
 			     check_to_up(max_deep-1, hole_x-1))
-				switch (rand_num()%3) {
+				switch (rand()%3) {
 					case 0: return J;
 					case 1: return S;
 					case 2: return T;
@@ -483,7 +563,7 @@ int next_lasy() { //returns number of the most suitable block
 
 			if (check_to_up(max_deep-1, hole_x-1) &&
 			    check_to_up(max_deep-1, hole_x+1))
-				switch (rand_num()%3) {
+				switch (rand()%3) {
 					case 0: return T;
 					case 1: return S;
 					case 2: return Z;
@@ -491,7 +571,7 @@ int next_lasy() { //returns number of the most suitable block
 
 			if (check_to_up(max_deep-2, hole_x-1) &&
 			    check_to_up(max_deep-2, hole_x+1))
-				switch (rand_num()%3) {
+				switch (rand()%3) {
 					case 0: return L;
 					case 1: return J;
 				}
@@ -500,7 +580,7 @@ int next_lasy() { //returns number of the most suitable block
 
 		default: return next_rand();
 	}
-}
+}*/
 
 void key_act() { //get key and do something with it
 	int c=getch();
@@ -529,7 +609,7 @@ void key_act() { //get key and do something with it
 			fall_comp();
 			wclear(window);
 			box(window, 0, 0);
-			mvwprintw(window, 3, 7, "Pause");
+			mvwaddstr(window, 3, 7, "Pause");
 			wrefresh(window);
 			int ch=getch();
 			while ('p'!=ch && 'Q'!=ch)
@@ -549,6 +629,7 @@ void key_act() { //get key and do something with it
 
 int main(int argc, char * argv[]) {
 	printf("\nnicet\nCopyright (C) 2012 Alexander Kromm (mmaulwurff[at]gmail.com)\nThis program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions; see COPYING for details.\n\n");
+	srand( (unsigned)time(NULL) );
 	initscr(); //start ncurses screen
 	start_color();
 	noecho(); //for characters not to appear at the screen
@@ -578,7 +659,7 @@ int main(int argc, char * argv[]) {
 	window=newwin(22, 22, 0,  0);
 	info  =newwin( 7, 10, 0, 22);
 	game.next=next_rand();
-	game.next_dir=rand_num()%4;
+	game.next_dir=rand()%4;
 	getch();
 	while (1) {
 		game.fallen_flag=0;
@@ -589,7 +670,7 @@ int main(int argc, char * argv[]) {
 			game.next=next_rand();
 		}
 		game.dir=game.next_dir;
-		game.next_dir=rand_num()%4;
+		game.next_dir=rand()%4;
 		print_next();
 		game.x=6;
 		game.y=1;
@@ -609,12 +690,10 @@ int main(int argc, char * argv[]) {
 		stop();
 		upd_all();
 	}
-	wstandend(window);
-	box(window, 0, 0);
-	mvwprintw(window, 0, 1, "Game Over!");
-	wrefresh(window);
-	while (getch()!='Q');
 	delwin(window);
 	delwin(info);
 	endwin();
+	printf("Game Over!\nYour score is %u.\n",
+		game.score);
+	return 0;
 }
